@@ -29,7 +29,7 @@ def get_server_ips():
 
                 # ✅ Navigate to the URL and wait for full load
                 response = page.goto(
-                    sourceban_url, wait_until="load", timeout=60000
+                    sourceban_url, wait_until="networkidle", timeout=60000
                 )
 
                 if not response or response.status != 200:
@@ -54,27 +54,11 @@ def get_server_ips():
     except Exception as e:
         print(f"Error fetching data: {e}")
         return set()
-
-
+    
 def block_ip(ip):
-    command = [
-        "powershell", "-Command",
-        f'New-NetFirewallRule -DisplayName "Block L4D2 Server {ip}" -Direction Outbound -RemoteAddress {ip} -Action Block -ErrorAction SilentlyContinue'
-    ]
-    subprocess.run(command, shell=True, capture_output=True)
-
-# Function to unblock an IP using Windows Firewall
-
-
-def unblock_ip(ip):
-    command = [
-        "powershell", "-Command",
-        f'Remove-NetFirewallRule -DisplayName "Block L4D2 Server {ip}" -ErrorAction SilentlyContinue'
-    ]
-    subprocess.run(command, shell=True, capture_output=True)
-
-# Function to get existing blocked IPs from the firewall
-
+    command = f"netsh advfirewall firewall add rule name=\"Block {ip} LEWD4DEAD2\" dir=in action=block remoteip={ip}"
+    subprocess.run(command, shell=True)
+    print(f"Blocked IP: {ip}")
 
 def get_existing_blocked_ips():
     command = [
@@ -84,17 +68,6 @@ def get_existing_blocked_ips():
     result = subprocess.run(command, shell=True,
                             capture_output=True, text=True)
     return set(result.stdout.split())
-
-# Function to save blocked IPs to a file
-
-
-def save_blocked_ips(ips):
-    with open(BLOCKED_IPS_FILE, "w") as file:
-        for ip in sorted(ips):
-            file.write(ip + "\n")
-
-# Function to load blocked IPs from a file
-
 
 def load_blocked_ips():
     if not os.path.exists(BLOCKED_IPS_FILE):
@@ -109,34 +82,34 @@ def load_dumped_ips():
     with open(DUMPED_IPS_FILE, "r") as file:
         return set(line.strip() for line in file.readlines())
 
-# Function to block IPs from SourceBans
-
-
 def block_malicious_ips():
-    print("Fetching banned IP addresses from SourceBans...")
-    banned_ips = get_server_ips()
+    print("Fetching server IP addresses from SourceBans...")
+    server_ips = get_server_ips()
 
-    if not banned_ips:
-        print("No IP addresses found or failed to fetch.")
+    if not server_ips:
+        print("No Server IPs found on SourceBans")
         return
 
-    existing_ips = get_existing_blocked_ips()
-    new_ips = banned_ips - existing_ips
+    existing_ips = load_blocked_ips()
+    new_ips = server_ips - existing_ips
 
     if not new_ips:
-        print("No new IPs to block. All known malicious IPs are already blocked.")
+        print("No new IPs to block. All known server IPs are already dumped.")
         return
 
-    print(f"Blocking {len(new_ips)} new IPs...")
+    print(f"Blocking {len(new_ips)} IPs...")
     for ip in new_ips:
         block_ip(ip)
-        print(f"Blocked {ip}")
 
-    save_blocked_ips(existing_ips | new_ips)
-    print("Blocked IPs saved to file.")
+    if os.path.isfile(BLOCKED_IPS_FILE):
+        os.remove(BLOCKED_IPS_FILE)
 
-# Function to unblock all previously blocked IPs
+    # Save to file
+    with open(BLOCKED_IPS_FILE, "w") as file:
+        for ip in sorted(server_ips):
+            file.write(ip + "\n")
 
+    print(f"\nServer IPs have been saved to {BLOCKED_IPS_FILE}.")
 
 def unblock_all_ips():
     blocked_ips = load_blocked_ips()
@@ -147,14 +120,11 @@ def unblock_all_ips():
 
     print(f"Unblocking {len(blocked_ips)} IPs...")
     for ip in blocked_ips:
-        unblock_ip(ip)
+        #unblock_ip(ip)
         print(f"Unblocked {ip}")
 
     os.remove(BLOCKED_IPS_FILE)
     print("All blocked IPs have been removed and file deleted.")
-
-# Function to dump all IPs
-
 
 def dump_all_ips():
     print("Fetching server IP addresses from SourceBans...")
@@ -184,9 +154,6 @@ def dump_all_ips():
             file.write(ip + "\n")
 
     print(f"\nServer IPs have been saved to {DUMPED_IPS_FILE}.")
-
-# Main menu function
-
 
 def main():
     while True:
