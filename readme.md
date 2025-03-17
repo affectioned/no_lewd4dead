@@ -1,4 +1,4 @@
-### **L4D2 Server Blocker**  
+### **No Lewd4Dead**  
 
 This script blocks or unblocks Left 4 Dead 2 (L4D2) servers that contain "Lewd4Dead" in their name. It uses PowerShell’s Windows Firewall rules to block unwanted servers and keeps a log of blocked IPs in `blocked_ips.txt`.  
 
